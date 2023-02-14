@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Define the name of the Docker container to check
+DOCKER_CONTAINER_NAME="my-docker-container"
+
+# Get the ID of the running container
+DOCKER_CONTAINER_ID=$(docker ps -qf "name=$DOCKER_CONTAINER_NAME")
+
+# Check if the container is running
+if [ -n "$DOCKER_CONTAINER_ID" ]; then
+  # Get the disk usage inside the container
+  DOCKER_DISK_USAGE=$(docker exec -it $DOCKER_CONTAINER_ID df -h / | awk 'NR==2{print $5}' | cut -d'%' -f1)
+  # Print the disk usage
+  echo "Disk usage inside the Docker container is $DOCKER_DISK_USAGE%"
+else
+  echo "Docker container $DOCKER_CONTAINER_NAME is not running."
+fi
