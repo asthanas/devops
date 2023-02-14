@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Define the name of the Docker container to check
+DOCKER_CONTAINER_NAME="my-docker-container"
+
+# Define the email addresses to send the alert to (separated by commas)
+ALERT_EMAILS="email1@example.com, email2@example.com, email3@example.com"
+
+# Define the disk utilization threshold
+THRESHOLD=80
+
+# Get the ID of the running container
+DOCKER_CONTAINER_ID=$(docker ps -qf "name=$DOCKER_CONTAINER_NAME")
+
+# Check if the container is running
+if [ -n "$DOCKER_CONTAINER_ID" ]; then
+  # Get the disk usage inside the container
+  DOCKER_DISK_USAGE=$(docker exec -it $DOCKER_CONTAINER_ID df -h / | awk 'NR==2{print $5}' | cut -d'%' -f1)
+  # Check if the disk usage is above the threshold
+  if [ "$DOCKER_DISK_USAGE" -gt "$THRESHOLD" ]; then
+    # Send an email alert in HTML format
+    echo "Disk usage inside the Docker container is above $THRESHOLD%" | mail -s "Disk usage alert inside Docker container $DOCKER_CONTAINER_NAME" -a "Content-Type: text/html" $ALERT_EMAILS << EOF
+    <html>
+      <body>
+        <p>Disk usage inside the Docker container is above $THRESHOLD%.</p>
+        <p><strong>Details:</strong></p>
+        <ul>
+          <li>Docker container name: $DOCKER_CONTAINER_NAME</li>
+          <li>Disk usage: $DOCKER_DISK_USAGE%</li>
+        </ul>
+      </body>
+    </html>
+EOF
+  fi
+else
+  echo "Docker container $DOCKER_CONTAINER_NAME is not running."
+fi
