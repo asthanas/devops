@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Define the threshold
+THRESHOLD=80
+
+# Define the list of hosts to check
+HOSTS=(
+    host1.example.com
+    host2.example.com
+    host3.example.com
+)
+
+# Loop through the list of hosts
+for HOST in "${HOSTS[@]}"; do
+    # Get the disk usage of the host
+    DISK_USAGE=$(ssh $HOST df -h / | awk 'NR==2{print $5}' | cut -d'%' -f1)
+    # Check if the disk usage is above the threshold
+    if [ "$DISK_USAGE" -gt "$THRESHOLD" ]; then
+        # Send an email alert
+        echo "Disk usage on $HOST is above $THRESHOLD%" | mail -s "Disk usage alert on $HOST" your_email@example.com
+    fi
+done
