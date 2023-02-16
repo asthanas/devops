@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Define the name of the Docker container to check
+DOCKER_CONTAINER_NAME="my-docker-container"
+
+# Define the email addresses to send the alert to (separated by commas)
+ALERT_EMAILS="email1@example.com, email2@example.com, email3@example.com"
+
+# Define the disk utilization threshold
+THRESHOLD=80
+
+# Get the ID of the running container
+DOCKER_CONTAINER_ID=$(docker ps -qf "name=$DOCKER_CONTAINER_NAME")
+
+# Check if the container is running
+if [ -n "$DOCKER_CONTAINER_ID" ]; then
+  # Get the disk usage inside the container
+  DOCKER_DISK_USAGE=$(docker exec -it $DOCKER_CONTAINER_ID df -h / | awk 'NR==2{print $5}' | cut -d'%' -f1)
+  # Get the memory usage inside the container
+  DOCKER_MEMORY_USAGE=$(docker stats --no-stream $DOCKER_CONTAINER_NAME --format "{{.MemUsage}}")
+  # Get the CPU usage inside the container
+  DOCKER_CPU_USAGE=$(docker stats --no-stream $DOCKER_CONTAINER_NAME --format "{{.CPUPerc}}")
+  # Get the network usage inside the container
+  DOCKER_NETWORK_USAGE=$(docker stats --no-stream $DOCKER_CONTAINER_NAME --format "{{.NetIO}}")
+  # Get the block IO usage inside the container
+  DOCKER_BLOCK_IO_USAGE=$(docker stats --no-stream $DOCKER_CONTAINER_NAME --format "{{.BlockIO}}")
+  # Check if the disk usage is above the threshold
+  if [ "$DOCKER_DISK_USAGE" -gt "$THRESHOLD" ]; then
+    # Send an email alert
+    SUBJECT="Disk usage alert inside Docker container $DOCKER_CONTAINER_NAME"
+    BODY=$'\e[31m'"Disk usage inside the Docker container is above $THRESHOLD%.\nDetails:\n\nDocker container name: $DOCKER_CONTAINER_NAME\nDisk usage: $DOCKER_DISK_USAGE%\nMemory usage: $DOCKER_MEMORY_USAGE\nCPU usage: $DOCKER_CPU_USAGE\nNetwork usage: $DOCKER_NETWORK_USAGE\nBlock IO usage: $DOCKER_BLOCK_IO_USAGE"$'\e[0m'
+    # Send email alert with the given details
+    echo -e "$BODY" | mail -s "$SUBJECT" -c "$CC_ALERT_EMAILS" -a "From: alert@example.com" "$ALERT_EMAILS"
+  fi
+else
+  echo "Docker container $DOCKER_CONTAINER_NAME is not running."
+fi
