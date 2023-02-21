@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Azure DevOps organization name
+organization="{organization}"
+
+# Azure DevOps personal access token with appropriate permissions
+pat="{your-personal-access-token}"
+
+# Existing PAT to revoke
+existing_token="{existing-token-to-revoke}"
+
+# New PAT expiration date (in UTC)
+expiration_date="{expiration-date}"
+
+# Current date (in YYYY-MM-DD format)
+current_date=$(date +%Y-%m-%d)
+
+# Azure DevOps variable group name
+variable_group="{variable-group-name}"
+
+# Azure DevOps variable name
+variable_name="{variable-name}"
+
+# Base64-encoded authorization header for Azure DevOps REST API calls
+base64AuthInfo=$(echo -n ":$pat" | base64)
+
+# Revoke the existing PAT
+curl -X POST \
+  -H "Authorization: Basic $base64AuthInfo" \
+  -H "Content-Type: application/json" \
+  -d "{\"token\":\"$existing_token\",\"revocationReason\":\"Expired\"}" \
+  "https://dev.azure.com/$organization/_apis/token/pats?api-version=6.0-preview.1"
+
+# Create a new PAT
+new_token=$(curl -X POST \
+  -H "Authorization: Basic $base64AuthInfo" \
+  -H "Content-Type: application/json" \
+  -d "{\"scope\":\"vso.code_full\",\"displayName\":\"New Token\",\"validTo\":\"$expiration_date\",\"validFrom\":\"$current_date\"}" \
+  "https://dev.azure.com/$organization/_apis/token/pats?api-version=6.0-preview.1")
+
+new_token_value=$(echo "$new_token" | jq -r '.tokenValue')
+
+# Store the new PAT in a variable group
+az extension add --name azure-devops
+az devops configure --defaults organization=$organization
+az pipelines variable-group variable update --group-id "$(az pipelines variable-group show --name $variable_group --query id --output tsv)" --name $variable_name --value "$new_token_value"
